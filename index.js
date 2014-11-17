@@ -4,8 +4,28 @@ var http = require('http'),
     port = process.env.PORT || 5000;
 
 http.createServer(function (req, res) {
-	res.writeHead(200, { 'Content-Type': 'text/plain' });
-	res.end('Hola, mundo!');
+	// Normalize URL by removing query-string, optional trailing slash, and
+	// making it lowercase.
+	var path = req.url
+		.replace(/\/?(?:\?.*)?$/, '')
+		.toLowerCase();
+
+	switch(path) {
+		case '':
+			res.writeHead(200, { 'Content-Type': 'text/plain' });
+			res.end('Homepage');
+			break;
+
+		case '/about':
+			res.writeHead(200, { 'Content-Type': 'text/plain' });
+			res.end('About');
+			break;
+
+		default:
+			res.writeHead(404, { 'Content-Type': 'text/plain' });
+			res.end('Not Found');
+			break;
+	}
 }).listen(port);
 
 console.log('Server started on localhost:%d', port);
