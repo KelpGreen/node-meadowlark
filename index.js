@@ -1,7 +1,7 @@
 'use strict';
 
 var http = require('http'),
-    port = 3000;
+    port = process.env.PORT || 5000;
 
 http.createServer(function (req, res) {
 	res.writeHead(200, { 'Content-Type': 'text/plain' });
