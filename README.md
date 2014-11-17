@@ -1,5 +1,11 @@
 # node-js-getting-started
 
+Saved as Heroku app _polar-eyrie-5199_, stack _cedar14_.
+
+https://polar-eyrie-5199.herokuapp.com/
+
+Git: https://git.heroku.com/polar-eyrie-5199.git
+
 A barebones Node.js app using [Express 4](http://expressjs.com/).
 
 This application support the [Getting Started with Node on Heroku](https://devcenter.heroku.com/articles/getting-started-with-nodejs) article - check it out.
