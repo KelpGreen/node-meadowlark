@@ -1,34 +1,39 @@
 'use strict';
 
-var express = require('express'),
-	app     = express(),
-	port    = process.env.PORT || 3000;
+var express 			= require('express'),
+	expressHandlebars 	= require('express-handlebars'),
+	app     			= express(),
+	port    			= process.env.PORT || 3000,
+	handlebars;
+
+// Set up Handlebars view engine.
+handlebars = expressHandlebars.create({
+	defaultLayout: 'main'
+});
+app.engine('handlebars', handlebars.engine);
+app.set('view engine', 'handlebars');
 
 app.set('port', port);
 
 app.get('/', function (req, resp) {
-	resp.type('text/plain');
-	resp.send('Meadowlark Travel');
+	resp.render('home');
 });
 
 app.get('/about', function (req, resp) {
-	resp.type('text/plain');
-	resp.send('About Meadowlark Travel');
+	resp.render('about');
 });
 
 // Custom 404 page.
 app.use(function (req, resp) {
-	resp.type('text/plain');
 	resp.status(404);
-	resp.send('404 - Not Found');
+	resp.render('404');
 });
 
 // Custom 505 page.
 app.use(function (err, req, resp /* , next */) {
 	console.error(err.stack);
-	resp.type('text/plain');
 	resp.status('500');
-	resp.send('500 - Server Error');
+	resp.render('500');
 });
 
 app.listen(app.get('port'), function () {
