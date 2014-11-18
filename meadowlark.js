@@ -5,7 +5,7 @@ var express 			= require('express'),
 	fortune             = require('./lib/fortune'),
 	app     			= express(),
 	port    			= process.env.PORT || 3000,
-	fortunes, handlebars;
+	handlebars;
 
 // Set up Handlebars view engine.
 handlebars = expressHandlebars.create({
