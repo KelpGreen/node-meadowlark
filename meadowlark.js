@@ -2,6 +2,7 @@
 
 var express 			= require('express'),
 	expressHandlebars 	= require('express-handlebars'),
+	fortune             = require('./lib/fortune'),
 	app     			= express(),
 	port    			= process.env.PORT || 3000,
 	fortunes, handlebars;
@@ -18,13 +19,6 @@ app.set('port', port);
 // Always server resources in /public tree.
 app.use(express.static(__dirname + '/public'));
 
-fortunes = [
-	'Conquer your fears or they will conquer you.',
-	'Rivers need springs.',
-	'Do not fear what you don\'t know.',
-	'You will have a pleasant surprise.',
-	'Whenever possible, keep it simple.',
-];
 
 // ===== Routes =====
 app.get('/', function (req, resp) {
@@ -32,8 +26,7 @@ app.get('/', function (req, resp) {
 });
 
 app.get('/about', function (req, resp) {
-	var randomFortune = fortunes[Math.floor(Math.random() * fortunes.length)];
-	resp.render('about', { fortune: randomFortune });
+	resp.render('about', { fortune: fortune.getFortune() });
 });
 
 // Custom 404 page.
