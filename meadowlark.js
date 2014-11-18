@@ -4,7 +4,7 @@ var express 			= require('express'),
 	expressHandlebars 	= require('express-handlebars'),
 	app     			= express(),
 	port    			= process.env.PORT || 3000,
-	handlebars;
+	fortunes, handlebars;
 
 // Set up Handlebars view engine.
 handlebars = expressHandlebars.create({
@@ -15,12 +15,25 @@ app.set('view engine', 'handlebars');
 
 app.set('port', port);
 
+// Always server resources in /public tree.
+app.use(express.static(__dirname + '/public'));
+
+fortunes = [
+	'Conquer your fears or they will conquer you.',
+	'Rivers need springs.',
+	'Do not fear what you don\'t know.',
+	'You will have a pleasant surprise.',
+	'Whenever possible, keep it simple.',
+];
+
+// ===== Routes =====
 app.get('/', function (req, resp) {
 	resp.render('home');
 });
 
 app.get('/about', function (req, resp) {
-	resp.render('about');
+	var randomFortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+	resp.render('about', { fortune: randomFortune });
 });
 
 // Custom 404 page.
