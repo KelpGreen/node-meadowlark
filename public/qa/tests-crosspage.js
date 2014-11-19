@@ -4,7 +4,9 @@
 'use strict';
 
 var Browser = require('zombie'),
+    /*jshint -W079 */
     assert  = require('chai').assert,
+    /*jshint +W079 */
     port    = process.env.PORT || 3000,
     browser;
 

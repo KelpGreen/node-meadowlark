@@ -1,5 +1,6 @@
 {
   "jquery": true,
+  "curly":  true,
   "predef": [
     "assert",
     "suite",

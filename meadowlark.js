@@ -6,7 +6,7 @@ var express             = require('express'),
     app                 = express(),
     port                = process.env.PORT || 3000,
     handlebars;
-
+    
 // Set up Handlebars view engine.
 handlebars = expressHandlebars.create({
     defaultLayout: 'main'

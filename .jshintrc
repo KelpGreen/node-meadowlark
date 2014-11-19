@@ -1,10 +1,19 @@
 {
     "node":         true,
+
+    "bitwise":      true,
+    "curly":        true,
     "eqeqeq":       true,
+    "forin":        true,
+    "freeze":       true,
     "latedef":      "nofunc",
+    "newcap":       true,
+    "nonbsp":       true,   // warns about non-breaking whitespace
+    "nonew":        true,   // warns about ctor calls w/o assigning result to var
     "strict":       true,
     "undef":        true,
     "unused":       true,
+
     "globals"   : {
       // Angular
       "angular":        false,
