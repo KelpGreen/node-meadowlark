@@ -6,7 +6,7 @@ var express             = require('express'),
     app                 = express(),
     port                = process.env.PORT || 3000,
     handlebars;
-    
+
 // Set up Handlebars view engine.
 handlebars = expressHandlebars.create({
     defaultLayout: 'main'
@@ -23,6 +23,44 @@ app.use(express.static(__dirname + '/public'));
 app.use(function (req, resp, next) {
     resp.locals.showTests = app.get('env') !== 'production' &&
                             req.query.test === '1';
+    next();
+});
+
+// mocked weather data
+var getWeatherData = function () {
+    return {
+        locations: [
+            {
+                name: 'Portland',
+                forecastUrl: 'http://www.wunderground.com/US/OR/Portland.html',
+                iconUrl: 'http://icons-ak.wxug.com/i/c/k/cloudy.gif',
+                weather: 'Overcast',
+                temp: '54.1 F (12.3 C)',
+            },
+            {
+                name: 'Bend',
+                forecastUrl: 'http://www.wunderground.com/US/OR/Bend.html',
+                iconUrl: 'http://icons-ak.wxug.com/i/c/k/partlycloudy.gif',
+                weather: 'Partly Cloudy',
+                temp: '55.0 F (12.8 C)',
+            },
+            {
+                name: 'Manzanita',
+                forecastUrl: 'http://www.wunderground.com/US/OR/Manzanita.html',
+                iconUrl: 'http://icons-ak.wxug.com/i/c/k/rain.gif',
+                weather: 'Light Rain',
+                temp: '55.0 F (12.8 C)',
+            },
+        ],
+    };
+};
+
+// Middleware to add weather data to context.
+app.use(function (req, resp, next) {
+    if (!resp.locals.partials) {
+        resp.locals.partials = {};
+    }
+    resp.locals.partials.weather = getWeatherData();
     next();
 });
 
