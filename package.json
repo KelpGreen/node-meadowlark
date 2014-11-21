@@ -7,6 +7,7 @@
     "start": "node meadowlark.js"
   },
   "dependencies": {
+    "body-parser":        "~1.9.2",
     "express":            "~4.10.x",
     "express-handlebars": "~1.1.x"
   },

@@ -3,6 +3,8 @@
 var express             = require('express'),
     expressHandlebars   = require('express-handlebars'),
     fortune             = require('./lib/fortune'),
+    bodyParser          = require('body-parser'),
+
     app                 = express(),
     port                = process.env.PORT || 3000,
     handlebars;
@@ -22,6 +24,15 @@ handlebars = expressHandlebars.create({
 });
 app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
+
+// bodyParser() is deprecated in Express 4.0.
+//app.use(bodyParser());
+
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: false }));
+
+// parse application/json
+app.use(bodyParser.json());
 
 app.set('port', port);
 
@@ -91,6 +102,31 @@ app.get('/tours/hood-river', function (req, resp) {
 
 app.get('/tours/request-group-rate', function (req, resp) {
     resp.render('tours/request-group-rate');
+});
+
+// Newsletter routes.
+app.get('/newsletter', function (req, resp) {
+    // We will learn about CSRF later.  For now, we just provide a dummy value.
+    resp.render('newsletter', { csrf: 'CSRF token goes here' });
+});
+
+app.post('/process', function (req, resp) {
+    /* Non-AJAX form
+    resp.redirect(303, '/thank-you');
+    */
+    console.log('Form       (from querystring):        %j', req.query.form);
+    console.log('CSRF token (from hidden form field):  %j', req.body._csrf);
+    console.log('Name       (from visible form field): %s', req.body.name);
+    console.log('Email      (from visible form field): %s', req.body.email);
+    // Is this called via AJAX?
+    if (req.xhr || req.accepts('json,html') === 'json') {
+        // If there were an error, we would send { error: 'error description'}.
+        resp.send({ success: true });
+    }
+    else {
+        // If there were an error, we would redirect to an error page.
+        resp.redirect(303, '/thank-you');
+    }
 });
 
 // Testing/sample routes.
