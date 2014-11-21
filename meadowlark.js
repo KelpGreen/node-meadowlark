@@ -9,7 +9,16 @@ var express             = require('express'),
 
 // Set up Handlebars view engine.
 handlebars = expressHandlebars.create({
-    defaultLayout: 'main'
+    defaultLayout: 'main',
+    helpers : {
+        section: function (name, options) {
+            if(!this._sections) {
+                this._sections = {};
+            }
+            this._sections[name] = options.fn(this);
+            return null;
+        },
+    }
 });
 app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
@@ -82,6 +91,10 @@ app.get('/tours/hood-river', function (req, resp) {
 
 app.get('/tours/request-group-rate', function (req, resp) {
     resp.render('tours/request-group-rate');
+});
+
+app.get('/jquery-test', function (req, resp) {
+    resp.render('jquery-test');
 });
 
 // Custom 404 page.
