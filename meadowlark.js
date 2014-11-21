@@ -93,8 +93,22 @@ app.get('/tours/request-group-rate', function (req, resp) {
     resp.render('tours/request-group-rate');
 });
 
+// Testing/sample routes.
 app.get('/jquery-test', function (req, resp) {
     resp.render('jquery-test');
+});
+
+app.get('/nursery-rhyme', function (req, resp) {
+    resp.render('nursery-rhyme');
+});
+
+app.get('/data/nursery-rhyme', function (req, resp) {
+    resp.json({
+        animal:     'squirrel',
+        bodyPart:   'tail',
+        adjective:  'bushy',
+        noun:       'heck'
+    });
 });
 
 // Custom 404 page.
