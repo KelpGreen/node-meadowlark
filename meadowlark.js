@@ -2,8 +2,9 @@
 
 var express             = require('express'),
     expressHandlebars   = require('express-handlebars'),
-    fortune             = require('./lib/fortune'),
     bodyParser          = require('body-parser'),
+    formidable          = require('formidable'),
+    fortune             = require('./lib/fortune'),
 
     app                 = express(),
     port                = process.env.PORT || 3000,
@@ -127,6 +128,32 @@ app.post('/process', function (req, resp) {
         // If there were an error, we would redirect to an error page.
         resp.redirect(303, '/thank-you');
     }
+});
+
+// Contest routes.
+app.get('/contest/vacation-photo', function (req, resp) {
+    var now = new Date();
+    resp.render('contest/vacation-photo', {
+        year:  now.getFullYear(),
+        month: now.getMonth()
+    });
+});
+
+app.post('/contest/vacation-photo/:year/:month', function (req, resp) {
+    var form = new formidable.IncomingForm();
+    form.parse(req, function (err, fields, files) {
+        if (err) {
+            return resp.redirect(303, '/error');
+        }
+        console.log('received fields: %j', fields);
+        console.log('received files:  %j', files);
+
+        resp.redirect(303, '/thank-you');
+    });
+});
+
+app.get('/thank-you', function (req, resp) {
+    resp.render('thank-you');
 });
 
 // Testing/sample routes.
