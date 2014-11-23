@@ -3,7 +3,10 @@
 var express             = require('express'),
     expressHandlebars   = require('express-handlebars'),
     bodyParser          = require('body-parser'),
-    formidable          = require('formidable'),
+    expressSession      = require('express-session'),
+    formidable          = require('formidable'),   // HTTP form handling
+
+    credentials         = require('./credentials'),
     fortune             = require('./lib/fortune'),
 
     app                 = express(),
@@ -26,6 +29,12 @@ handlebars = expressHandlebars.create({
 app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
 
+app.use(expressSession({
+    secret:             credentials.cookieSecret,
+    saveUninitialized:  true,   // default = true
+    resave:             true    // default = true
+}));
+
 // bodyParser() is deprecated in Express 4.0.
 //app.use(bodyParser());
 
@@ -36,6 +45,17 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 app.set('port', port);
+
+app.use(function (req, resp, next) {
+    // If there's a flash message, transfer it to the context.
+    console.info('Transferring flash message to context: %j', req.session.flash);
+    if (!resp.locals.flash) {
+        resp.locals.flash = {};
+    }
+    resp.locals.flash = req.session.flash;
+    delete req.session.flash;
+    next();
+});
 
 // Always server resources in /public tree.
 app.use(express.static(__dirname + '/public'));
@@ -87,6 +107,12 @@ app.use(function (req, resp, next) {
 
 // ===== Routes =====
 app.get('/', function (req, resp) {
+    // resp.locals.flash = {
+    //     type:    'success',
+    //     intro:   'OK!',
+    //     message: 'Everything is working.'
+    // };
+    console.info('Rendering home');
     resp.render('home');
 });
 
@@ -106,9 +132,59 @@ app.get('/tours/request-group-rate', function (req, resp) {
 });
 
 // Newsletter routes.
+// for now, we're mocking NewsletterSignup:
+function NewsletterSignup(){
+}
+NewsletterSignup.prototype.save = function(cb){
+    cb();
+};
+
+var VALID_EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
 app.get('/newsletter', function (req, resp) {
     // We will learn about CSRF later.  For now, we just provide a dummy value.
     resp.render('newsletter', { csrf: 'CSRF token goes here' });
+});
+
+app.post('/newsletter', function (req, resp) {
+    var name  = req.body.name  || '',
+        email = req.body.email || '';
+
+    // Validate input.
+    if(!email.match(VALID_EMAIL_REGEX)) {
+        if (req.xhr) {
+            return resp.json({ error: 'Invalid name email address.' });
+        }
+        req.session.flash = {
+            type: 'danger',
+            intro: 'Validation error!',
+            message: 'The email address you entered was  not valid.',
+        };
+        return resp.redirect(303, '/newsletter/archive');
+    }
+
+    new NewsletterSignup({ name: name, email: email }).save(function(err){
+        if (err) {
+            if (req.xhr) {
+                return resp.json({ error: 'Database error.' });
+            }
+            req.session.flash = {
+                type: 'danger',
+                intro: 'Database error!',
+                message: 'There was a database error; please try again later.',
+            };
+            return resp.redirect(303, '/newsletter/archive');
+        }
+        if (req.xhr) {
+            return resp.json({ success: true });
+        }
+        req.session.flash = {
+            type: 'success',
+            intro: 'Thank you!',
+            message: 'You have now been signed up for the newsletter.',
+        };
+        return resp.redirect(303, '/newsletter/archive');
+    });
 });
 
 app.post('/process', function (req, resp) {
@@ -120,8 +196,14 @@ app.post('/process', function (req, resp) {
     console.log('Name       (from visible form field): %s', req.body.name);
     console.log('Email      (from visible form field): %s', req.body.email);
     // Is this called via AJAX?
+    resp.locals.flash = {
+        type:    'success',
+        intro:   'You are signed up!',
+        message: 'Everything is working.'
+    };
     if (req.xhr || req.accepts('json,html') === 'json') {
         // If there were an error, we would send { error: 'error description'}.
+        
         resp.send({ success: true });
     }
     else {
@@ -188,6 +270,7 @@ app.use(function (err, req, resp /* , next */) {
 });
 
 app.listen(app.get('port'), function () {
-    console.log('Express started on http://localhost:%d',
+    console.log('Express started at %s on http://localhost:%d',
+        new Date().toISOString(),
         app.get('port'));
 });
