@@ -1,3 +1,6 @@
 node_modules
 
+// We configured express-logger to keep logs in ./log
+log
+
 .DS_STORE

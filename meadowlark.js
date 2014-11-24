@@ -1,13 +1,18 @@
 'use strict';
 
-var express             = require('express'),
+var //connect             = require('connect'),
+    express             = require('express'),
     expressHandlebars   = require('express-handlebars'),
     bodyParser          = require('body-parser'),
+    expressLogger       = require('express-logger'),    // supports daily log rotation
     expressSession      = require('express-session'),
-    formidable          = require('formidable'),   // HTTP form handling
+    formidable          = require('formidable'),        // HTTP form handling
+    morgan              = require('morgan'),            // colorful dev logging
+    path                = require('path'),
 
     credentials         = require('./credentials'),
     fortune             = require('./lib/fortune'),
+    cartValidation      = require('./lib/cartValidation'),
 
     app                 = express(),
     port                = process.env.PORT || 3000,
@@ -29,6 +34,18 @@ handlebars = expressHandlebars.create({
 app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
 
+// Logging.
+switch (app.get('env')) {
+    case 'development':
+        app.use(morgan('dev'));
+        break;
+    case 'production':
+        app.use(expressLogger({
+            path: path.join(__dirname, '/log/requests.log')
+        }));
+        break;
+}
+
 app.use(expressSession({
     secret:             credentials.cookieSecret,
     saveUninitialized:  true,   // default = true
@@ -48,7 +65,7 @@ app.set('port', port);
 
 app.use(function (req, resp, next) {
     // If there's a flash message, transfer it to the context.
-    console.info('Transferring flash message to context: %j', req.session.flash);
+    //console.info('Transferring flash message to context: %j', req.session.flash);
     if (!resp.locals.flash) {
         resp.locals.flash = {};
     }
@@ -107,12 +124,6 @@ app.use(function (req, resp, next) {
 
 // ===== Routes =====
 app.get('/', function (req, resp) {
-    // resp.locals.flash = {
-    //     type:    'success',
-    //     intro:   'OK!',
-    //     message: 'Everything is working.'
-    // };
-    console.info('Rendering home');
     resp.render('home');
 });
 
@@ -238,6 +249,10 @@ app.get('/thank-you', function (req, resp) {
     resp.render('thank-you');
 });
 
+// Shopping cart routes.
+app.use(cartValidation.checkWaivers);
+app.use(cartValidation.checkGuestCounts);
+
 // Testing/sample routes.
 app.get('/jquery-test', function (req, resp) {
     resp.render('jquery-test');
@@ -270,7 +285,8 @@ app.use(function (err, req, resp /* , next */) {
 });
 
 app.listen(app.get('port'), function () {
-    console.log('Express started at %s on http://localhost:%d',
+    console.log('Express started at %s, in %s mode on http://localhost:%d',
         new Date().toISOString(),
+        app.get('env'),
         app.get('port'));
 });
