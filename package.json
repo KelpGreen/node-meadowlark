@@ -14,6 +14,7 @@
     "express-logger":     "~0.0.3",
     "express-session":    "~1.9.1",
     "formidable":         "~1.0.15",
+    "loadtest":           "~1.2.4",
     "morgan":             "~1.5.0"
   },
   "devDependencies": {

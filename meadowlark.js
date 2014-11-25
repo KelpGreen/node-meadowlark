@@ -4,9 +4,12 @@ var //connect             = require('connect'),
     express             = require('express'),
     expressHandlebars   = require('express-handlebars'),
     bodyParser          = require('body-parser'),
+    cluster             = require('cluster'),
+    domain              = require('domain'),
     expressLogger       = require('express-logger'),    // supports daily log rotation
     expressSession      = require('express-session'),
     formidable          = require('formidable'),        // HTTP form handling
+    http                = require('http'),
     morgan              = require('morgan'),            // colorful dev logging
     path                = require('path'),
 
@@ -16,7 +19,7 @@ var //connect             = require('connect'),
 
     app                 = express(),
     port                = process.env.PORT || 3000,
-    handlebars;
+    handlebars, server;
 
 // Set up Handlebars view engine.
 handlebars = expressHandlebars.create({
@@ -33,6 +36,59 @@ handlebars = expressHandlebars.create({
 });
 app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
+
+// Use domains for more robust error-handling.
+/*
+*/
+app.use(function (req, resp, next) {
+    // Create a domain for this request.
+    var domain2 = domain.create();
+
+    // Handle errors on this domain.
+    domain2.on('error', function (err) {
+        var worker;
+
+        console.error('DOMAIN ERROR CAUGHT\n', err.stack);
+        try {
+            // Failsafe shutdown in 5 seconds.
+            setTimeout(function () {
+                console.error('Failsafe shutdown.');
+                process.exit(1);
+            }, 5000);
+
+            // Disconnect from the cluster.
+            worker = cluster.worker;
+            if (worker) {
+                worker.disconnect();
+            }
+
+            // Stop taking new requests.
+            server.close();
+
+            try {
+                // Attempt to use Express error route.
+                next(err);
+            }
+            catch (err2) {
+                // Express route failed, so try plain NodeJS response.
+                console.error('Express error mechanism failed.\n', err2.stack);
+                resp.statusCode = 500;
+                resp.setHeader('content-type', 'text/plain');
+                resp.end('Server error.');
+            }
+        }
+        catch (err3) {
+            console.error('Unable to send 500 response.\n', err3.stack);
+        }
+    });
+
+    // Add the request and response objects to the domain.
+    domain2.add(req);
+    domain2.add(resp);
+
+    // Execute the rest of the request chain in the domain.
+    domain2.run(next);
+});
 
 // Logging.
 switch (app.get('env')) {
@@ -271,20 +327,46 @@ app.get('/data/nursery-rhyme', function (req, resp) {
     });
 });
 
+app.get('/fail', function(req, resp) {   // jshint ignore:line
+    throw new Error('Nope!');
+});
+
+app.get('/epic-fail', function (req, resp) {  // jshint ignore:line
+    process.nextTick(function () {
+        throw new Error('Kaboom!');
+    });
+});
+
 // Custom 404 page.
 app.use(function (req, resp) {
     resp.status(404);
     resp.render('404');
 });
 
-// Custom 505 page.
-app.use(function (err, req, resp /* , next */) {
+// Custom 500 page.
+app.use(function (err, req, resp , next) {  // jshint ignore:line
     console.error(err.stack);
     resp.status('500');
     resp.render('500');
 });
 
-app.listen(app.get('port'), function () {
+/*
+var startServer = function () {
+    var s = http.createServer(app);
+    s.listen(app.get('port', function () {
+        console.log('Express started at %s, in %s mode on http://localhost:%d',
+            new Date().toISOString(),
+            app.get('env'),
+            app.get('port'));
+    }));
+    return s;
+};
+
+server = startServer();
+*/
+
+server = http.createServer(app);
+server.listen(app.get('port'), function () {
     console.log('Express started at %s, in %s mode on http://localhost:%d',
         new Date().toISOString(),
         app.get('env'),
