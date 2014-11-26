@@ -1,26 +1,27 @@
 'use strict';
 
 var //connect             = require('connect'),
-    express             = require('express'),
-    expressHandlebars   = require('express-handlebars'),
-    bodyParser          = require('body-parser'),
-    cluster             = require('cluster'),
-    domain              = require('domain'),
-    expressLogger       = require('express-logger'),    // supports daily log rotation
-    expressSession      = require('express-session'),
-    formidable          = require('formidable'),        // HTTP form handling
-    http                = require('http'),
-    mongoose            = require('mongoose'),          // MongoDB
-    morgan              = require('morgan'),            // colorful dev logging
-    path                = require('path'),
+    express                  = require('express'),
+    expressHandlebars        = require('express-handlebars'),
+    bodyParser               = require('body-parser'),
+    cluster                  = require('cluster'),
+    domain                   = require('domain'),
+    expressLogger            = require('express-logger'),    // supports daily log rotation
+    expressSession           = require('express-session'),
+    formidable               = require('formidable'),        // HTTP form handling
+    http                     = require('http'),
+    mongoose                 = require('mongoose'),          // MongoDB
+    morgan                   = require('morgan'),            // colorful dev logging
+    path                     = require('path'),
 
-    cartValidation      = require('./lib/cartValidation'),
-    credentials         = require('./credentials'),
-    fortune             = require('./lib/fortune'),
-    Vacation            = require('./models/vacation.js'),
+    cartValidation           = require('./lib/cartValidation'),
+    credentials              = require('./credentials'),
+    fortune                  = require('./lib/fortune'),
+    Vacation                 = require('./models/vacation'),
+    VacationInSeasonListener = require('./models/vacationInSeasonListener'),
 
-    app                 = express(),
-    port                = process.env.PORT || 3000,
+    app                      = express(),
+    port                     = process.env.PORT || 3000,
     handlebars, server;
 
 // Set up Handlebars view engine.
@@ -381,6 +382,35 @@ app.get('/vacations', function (req, resp, next) {
 
         resp.render('vacations', context);
     });
+});
+
+app.get('/notify-me-when-in-season', function (req, resp) {
+    resp.render('notify-me-when-in-season', { sku: req.query.sku });
+});
+
+app.post('/notify-me-when-in-season', function (req, resp) {
+    VacationInSeasonListener.update(
+        { email:          req.body.email  },
+        { $push:  { skus: req.body.sku   }},
+        { upsert: true },
+        function (err) {
+            if (err) {
+                console.error(err.stack);
+                req.session.flash = {
+                    type    : 'danger',
+                    intro   : 'Oops!',
+                    message : 'There was an error processing your request.'
+                };
+                return resp.redirect(303, '/vacations');
+            }
+            req.session.flash = {
+                type    : 'success',
+                intro   : 'Thank you!',
+                message : 'You will be notified when this vacation is in season.'
+            }
+            return resp.redirect(303, '/vacations');
+        }
+    );
 });
 
 // Contest routes.
