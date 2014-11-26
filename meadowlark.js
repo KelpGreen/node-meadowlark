@@ -10,12 +10,14 @@ var //connect             = require('connect'),
     expressSession      = require('express-session'),
     formidable          = require('formidable'),        // HTTP form handling
     http                = require('http'),
+    mongoose            = require('mongoose'),          // MongoDB
     morgan              = require('morgan'),            // colorful dev logging
     path                = require('path'),
 
+    cartValidation      = require('./lib/cartValidation'),
     credentials         = require('./credentials'),
     fortune             = require('./lib/fortune'),
-    cartValidation      = require('./lib/cartValidation'),
+    Vacation            = require('./models/vacation.js'),
 
     app                 = express(),
     port                = process.env.PORT || 3000,
@@ -119,6 +121,84 @@ app.use(bodyParser.json());
 
 app.set('port', port);
 
+// Database configuration.
+var dbOptions = {
+    server: {
+        socketOptions: { keepAlive: 1 }
+    }
+};
+switch (app.get('env')) {
+    case 'development':
+        mongoose.connect(credentials.mongo.development.connectionString, dbOptions);
+        break;
+
+    case 'production':
+        mongoose.connect(credentials.mongo.production.connectionString, dbOptions);
+        break;
+
+    default:
+        throw new Error('Unknown execution environment: %j', app.get('env'));
+}
+
+// Initialize vacations.
+Vacation.find(function (err, vacations) {
+    // If vacations already exist, leave.
+    if (vacations.length) {
+        return;
+    }
+
+    new Vacation({
+        name:           'Hood River Day Trip',
+        slug:           'hood-river-day-trip',
+        category:       'Day Trip',
+        sku:            'HR199',
+        description:    'Spend a day sailing on the Columbia and ' +
+                        'enjoying craft beers in Hood River!',
+        priceInCents:   9995,
+        tags:           [
+                            'day trip',
+                            'hood river',
+                            'sailing',
+                            'windsurfing',
+                            'breweries'
+                        ],
+        inSeason: true,
+        maximumGuests:  16,
+        available:      true,
+        packagesSold:   0,
+    }).save();
+
+    new Vacation({
+        name          : 'Oregon Coast Getaway',
+        slug          : 'oregon-coast-getaway',
+        category      : 'Weekend Getaway',
+        sku           : 'OC39',
+        description   : 'Enjoy the ocean air and quaint coastal towns!', 
+        priceInCents  : 269995,
+        tags          : ['weekend getaway', 'oregon coast', 'beachcombing'],
+        inSeason      : false,
+        maximumGuests : 8,
+        available     : true,
+        packagesSold  : 0,
+    }).save();
+
+    new Vacation({
+        name           : 'Rock Climbing in Bend',
+        slug           : 'rock-climbing-in-bend',
+        category       : 'Adventure',
+        sku            : 'B99',
+        description    : 'Experience the thrill of climbing in the high desert.',
+        priceInCents   : 289995,
+        tags           : ['weekend getaway', 'bend', 'high desert', 'rock climbing'],
+        inSeason       : true,
+        requiresWaiver : true,
+        maximumGuests  : 4,
+        available      : false,
+        packagesSold   : 0,
+        notes          : 'The tour guide is currently recovering from a skiing accident.',
+    }).save();    
+});
+
 app.use(function (req, resp, next) {
     // If there's a flash message, transfer it to the context.
     //console.info('Transferring flash message to context: %j', req.session.flash);
@@ -145,11 +225,11 @@ var getWeatherData = function () {
     return {
         locations: [
             {
-                name: 'Portland',
-                forecastUrl: 'http://www.wunderground.com/US/OR/Portland.html',
-                iconUrl: 'http://icons-ak.wxug.com/i/c/k/cloudy.gif',
-                weather: 'Overcast',
-                temp: '54.1 F (12.3 C)',
+                name        : 'Portland',
+                forecastUrl : 'http://www.wunderground.com/US/OR/Portland.html',
+                iconUrl     : 'http://icons-ak.wxug.com/i/c/k/cloudy.gif',
+                weather     : 'Overcast',
+                temp        : '54.1 F (12.3 C)',
             },
             {
                 name: 'Bend',
@@ -277,6 +357,30 @@ app.post('/process', function (req, resp) {
         // If there were an error, we would redirect to an error page.
         resp.redirect(303, '/thank-you');
     }
+});
+
+// Vacation routes.
+app.get('/vacations', function (req, resp, next) {
+    Vacation.find({ available: true }, function (err, vacations) {
+        if (err) {
+            console.error('Error finding vacations: %j', err);
+            next(err);
+        }
+        console.info('Found %d vacations', vacations.length);
+        var context = {
+            vacations: vacations.map(function (vacation) {
+                return {
+                    sku         : vacation.sku,
+                    name        : vacation.name,
+                    description : vacation.description,
+                    price       : vacation.getDisplayPrice(),
+                    inSeason    : vacation.inSeason
+                };
+            })
+        };
+
+        resp.render('vacations', context);
+    });
 });
 
 // Contest routes.
