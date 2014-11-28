@@ -10,12 +10,12 @@ var //connect             = require('connect'),
     expressSession           = require('express-session'),
     formidable               = require('formidable'),        // HTTP form handling
     http                     = require('http'),
-    mongoose                 = require('mongoose'),          // MongoDB
     morgan                   = require('morgan'),            // colorful dev logging
     path                     = require('path'),
 
     cartValidation           = require('./lib/cartValidation'),
     credentials              = require('./credentials'),
+    db                       = require('./models/db'),
     fortune                  = require('./lib/fortune'),
     Vacation                 = require('./models/vacation'),
     VacationInSeasonListener = require('./models/vacationInSeasonListener'),
@@ -23,6 +23,8 @@ var //connect             = require('connect'),
     app                      = express(),
     port                     = process.env.PORT || 3000,
     handlebars, server;
+
+console.info('Execution environment: %j', app.get('env'));
 
 // Set up Handlebars view engine.
 handlebars = expressHandlebars.create({
@@ -41,8 +43,6 @@ app.engine('handlebars', handlebars.engine);
 app.set('view engine', 'handlebars');
 
 // Use domains for more robust error-handling.
-/*
-*/
 app.use(function (req, resp, next) {
     // Create a domain for this request.
     var domain2 = domain.create();
@@ -122,83 +122,8 @@ app.use(bodyParser.json());
 
 app.set('port', port);
 
-// Database configuration.
-var dbOptions = {
-    server: {
-        socketOptions: { keepAlive: 1 }
-    }
-};
-switch (app.get('env')) {
-    case 'development':
-        mongoose.connect(credentials.mongo.development.connectionString, dbOptions);
-        break;
-
-    case 'production':
-        mongoose.connect(credentials.mongo.production.connectionString, dbOptions);
-        break;
-
-    default:
-        throw new Error('Unknown execution environment: %j', app.get('env'));
-}
-
-// Initialize vacations.
-Vacation.find(function (err, vacations) {
-    // If vacations already exist, leave.
-    if (vacations.length) {
-        return;
-    }
-
-    new Vacation({
-        name:           'Hood River Day Trip',
-        slug:           'hood-river-day-trip',
-        category:       'Day Trip',
-        sku:            'HR199',
-        description:    'Spend a day sailing on the Columbia and ' +
-                        'enjoying craft beers in Hood River!',
-        priceInCents:   9995,
-        tags:           [
-                            'day trip',
-                            'hood river',
-                            'sailing',
-                            'windsurfing',
-                            'breweries'
-                        ],
-        inSeason: true,
-        maximumGuests:  16,
-        available:      true,
-        packagesSold:   0,
-    }).save();
-
-    new Vacation({
-        name          : 'Oregon Coast Getaway',
-        slug          : 'oregon-coast-getaway',
-        category      : 'Weekend Getaway',
-        sku           : 'OC39',
-        description   : 'Enjoy the ocean air and quaint coastal towns!', 
-        priceInCents  : 269995,
-        tags          : ['weekend getaway', 'oregon coast', 'beachcombing'],
-        inSeason      : false,
-        maximumGuests : 8,
-        available     : true,
-        packagesSold  : 0,
-    }).save();
-
-    new Vacation({
-        name           : 'Rock Climbing in Bend',
-        slug           : 'rock-climbing-in-bend',
-        category       : 'Adventure',
-        sku            : 'B99',
-        description    : 'Experience the thrill of climbing in the high desert.',
-        priceInCents   : 289995,
-        tags           : ['weekend getaway', 'bend', 'high desert', 'rock climbing'],
-        inSeason       : true,
-        requiresWaiver : true,
-        maximumGuests  : 4,
-        available      : false,
-        packagesSold   : 0,
-        notes          : 'The tour guide is currently recovering from a skiing accident.',
-    }).save();    
-});
+// Open database, initializing it if necessary.
+db(app.get('env'), credentials);
 
 app.use(function (req, resp, next) {
     // If there's a flash message, transfer it to the context.
@@ -407,7 +332,7 @@ app.post('/notify-me-when-in-season', function (req, resp) {
                 type    : 'success',
                 intro   : 'Thank you!',
                 message : 'You will be notified when this vacation is in season.'
-            }
+            };
             return resp.redirect(303, '/vacations');
         }
     );
