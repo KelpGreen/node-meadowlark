@@ -3,9 +3,12 @@
 //
 'use strict';
 
-var mongoose = require('mongoose'),          // MongoDB
-    Vacation = require('./vacation'),
+var mongoose            = require('mongoose'),          // MongoDB
+    mongooseSession     = require('mongoose-session'),
+    Vacation            = require('./vacation'),
     connectionString, dbOptions;
+
+module.exports = {};
 
 dbOptions = {
     server: {
@@ -78,8 +81,8 @@ var intializeVacations = function () {
 };
 
 var initDb = function (envName, credentials) {
-    // Database configuration.
 
+    // Database configuration.
     switch (envName) {
         case 'development':
             connectionString = credentials.mongo.development.connectionString;
@@ -121,7 +124,10 @@ var initDb = function (envName, credentials) {
       });
     });
 
+    // Session store.
+    module.exports.sessionStore = mongooseSession(mongoose);
+
     intializeVacations();
 };
 
-module.exports = initDb;
+module.exports.init = initDb;

@@ -1,27 +1,27 @@
 'use strict';
 
-var //connect             = require('connect'),
-    express                  = require('express'),
-    expressHandlebars        = require('express-handlebars'),
-    bodyParser               = require('body-parser'),
-    cluster                  = require('cluster'),
-    domain                   = require('domain'),
-    expressLogger            = require('express-logger'),    // supports daily log rotation
-    expressSession           = require('express-session'),
-    formidable               = require('formidable'),        // HTTP form handling
-    http                     = require('http'),
-    morgan                   = require('morgan'),            // colorful dev logging
-    path                     = require('path'),
+var //connect                     = require('connect'),
+    express                     = require('express'),
+    expressHandlebars           = require('express-handlebars'),
+    bodyParser                  = require('body-parser'),
+    cluster                     = require('cluster'),
+    domain                      = require('domain'),
+    expressLogger               = require('express-logger'),    // supports daily log rotation
+    expressSession              = require('express-session'),
+    formidable                  = require('formidable'),        // HTTP form handling
+    http                        = require('http'),
+    morgan                      = require('morgan'),            // colorful dev logging
+    path                        = require('path'),
 
-    cartValidation           = require('./lib/cartValidation'),
-    credentials              = require('./credentials'),
-    db                       = require('./models/db'),
-    fortune                  = require('./lib/fortune'),
-    Vacation                 = require('./models/vacation'),
-    VacationInSeasonListener = require('./models/vacationInSeasonListener'),
+    cartValidation              = require('./lib/cartValidation'),
+    credentials                 = require('./credentials'),
+    db                          = require('./models/db'),
+    fortune                     = require('./lib/fortune'),
+    Vacation                    = require('./models/vacation'),
+    VacationInSeasonListener    = require('./models/vacationInSeasonListener'),
 
-    app                      = express(),
-    port                     = process.env.PORT || 3000,
+    app                         = express(),
+    port                        = process.env.PORT || 3000,
     handlebars, server;
 
 console.info('Execution environment: %j', app.get('env'));
@@ -105,7 +105,18 @@ switch (app.get('env')) {
         break;
 }
 
+// I moved the other DB stuff into models/db.js, but I'm not sure where to put this
+// Mongo sessions stuff....
+// Open database, initializing it if necessary.
+db.init(app.get('env'), credentials);
+//console.info('db.sessionStore = %j', db.sessionStore.SessionModel);
+/*
+mongoSessionStore = sessionMongoose(connect)({ 
+    url: credentials.mongo.connectionString
+});
+*/
 app.use(expressSession({
+    store:              db.sessionStore,
     secret:             credentials.cookieSecret,
     saveUninitialized:  true,   // default = true
     resave:             true    // default = true
@@ -122,8 +133,6 @@ app.use(bodyParser.json());
 
 app.set('port', port);
 
-// Open database, initializing it if necessary.
-db(app.get('env'), credentials);
 
 app.use(function (req, resp, next) {
     // If there's a flash message, transfer it to the context.
@@ -285,25 +294,47 @@ app.post('/process', function (req, resp) {
     }
 });
 
+var convertFromUSD = function (value, currency) {
+    switch (currency) {
+        case 'USD': return value * 1.0;
+        case 'GBP': return value * 0.6;
+        case 'BTC': return value * 0.0023707918444761;  // BitCoin 
+        default:    return NaN;
+    }
+};
+
 // Vacation routes.
 app.get('/vacations', function (req, resp, next) {
     Vacation.find({ available: true }, function (err, vacations) {
+        var context, currency;
+
         if (err) {
             console.error('Error finding vacations: %j', err);
             next(err);
         }
         console.info('Found %d vacations', vacations.length);
-        var context = {
+
+        currency = req.session.currency || 'USD';
+        context = {
+            currency:  currency,
             vacations: vacations.map(function (vacation) {
+                var localCurrency = convertFromUSD(vacation.priceInCents / 100, currency);
                 return {
                     sku         : vacation.sku,
                     name        : vacation.name,
                     description : vacation.description,
-                    price       : vacation.getDisplayPrice(),
-                    inSeason    : vacation.inSeason
+                    price       : localCurrency,
+                    inSeason    : vacation.inSeason,
+                    qty         : vacation.qty
                 };
             })
         };
+
+        switch (currency) {
+            case 'USD': context.currencyUSD = 'selected'; break;
+            case 'GBP': context.currencyGBP = 'selected'; break;
+            case 'BTC': context.currencyBTC = 'selected'; break;
+        }
 
         resp.render('vacations', context);
     });
@@ -336,6 +367,11 @@ app.post('/notify-me-when-in-season', function (req, resp) {
             return resp.redirect(303, '/vacations');
         }
     );
+});
+
+app.get('/set-currency/:currency', function (req, resp) {
+    req.session.currency = req.params.currency;
+    return resp.redirect(303, '/vacations');
 });
 
 // Contest routes.
