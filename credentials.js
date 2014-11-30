@@ -12,5 +12,15 @@ module.exports = {
         production: {
             connectionString: 'mongodb://localhost:27017/meadowlark-prod'
         }
+    },
+
+    postgres: {
+        development: {
+            nodepgPassword:     'Guide-Basil-Adapter-72',
+            connectionString:   'tcp://nodepg:Guide-Basil-Adapter-72@localhost/meadowlark'
+        },
+        production: {
+
+        }
     }
 };

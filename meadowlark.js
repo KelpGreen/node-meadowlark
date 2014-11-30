@@ -1,6 +1,7 @@
 'use strict';
 
 var //connect                     = require('connect'),
+    connectPg                   = require('connect-pg-simple'), // Postgres session store
     express                     = require('express'),
     expressHandlebars           = require('express-handlebars'),
     bodyParser                  = require('body-parser'),
@@ -12,6 +13,7 @@ var //connect                     = require('connect'),
     http                        = require('http'),
     morgan                      = require('morgan'),            // colorful dev logging
     path                        = require('path'),
+    pg                          = require('pg'),                // Postgres
 
     cartValidation              = require('./lib/cartValidation'),
     credentials                 = require('./credentials'),
@@ -109,14 +111,35 @@ switch (app.get('env')) {
 // Mongo sessions stuff....
 // Open database, initializing it if necessary.
 db.init(app.get('env'), credentials);
-//console.info('db.sessionStore = %j', db.sessionStore.SessionModel);
+var pgConnectionString = 'postgresql://nodepg:iPod@localhost:5432/meadowlark';
 /*
-mongoSessionStore = sessionMongoose(connect)({ 
-    url: credentials.mongo.connectionString
+pg.connect(pgConnectionString, function(err, client, done) {
+    if (err) {
+        console.error('Failed to connect to Postgres: %s', err);
+        done(err);
+    }
+    client.query('SELECT * FROM session', function(err, result) {
+        done();
+        if (err) {
+            console.error(err); 
+            //response.send("Error " + err);
+        }
+        else { 
+            console.info(result.rows);
+            //response.send(result.rows); }
+        }
+    });
 });
 */
+var pgSession = connectPg(expressSession);
+var pgStore = new pgSession({
+    pg:             pg,
+    conString:      pgConnectionString,
+    tableName:      'session'
+});
 app.use(expressSession({
-    store:              db.sessionStore,
+    //store:              db.sessionStore,
+    store:              pgStore,
     secret:             credentials.cookieSecret,
     saveUninitialized:  true,   // default = true
     resave:             true    // default = true
