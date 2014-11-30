@@ -14,10 +14,10 @@ module.exports = {
         }
     },
 
-    postgres: {
+    postgresql: {
         development: {
-            nodepgPassword:     'Guide-Basil-Adapter-72',
-            connectionString:   'tcp://nodepg:Guide-Basil-Adapter-72@localhost/meadowlark'
+            // 'postgresql://nodepg:iPod@localhost:5432/meadowlark'
+            connectionString:   'tcp://nodepg:iPod@localhost/meadowlark'
         },
         production: {
 
